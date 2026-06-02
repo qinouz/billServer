@@ -10,6 +10,7 @@ import {
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
+    const request = ctx.getRequest();
     const response = ctx.getResponse();
 
     const status =
@@ -33,6 +34,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       code: status,
       message: Array.isArray(message) ? message.join('; ') : message,
       error: HttpStatus[status] ?? 'Error',
+      path: request.originalUrl ?? request.url,
     });
   }
 }
