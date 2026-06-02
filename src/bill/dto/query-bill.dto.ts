@@ -1,8 +1,9 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 export class QueryBillDto {
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @Matches(/^\\d{4}-\\d{2}$/)
   month?: string;
 
