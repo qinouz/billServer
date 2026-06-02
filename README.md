@@ -14,7 +14,7 @@ Create the MySQL schema with `sql/schema.sql`, or set `DB_SYNCHRONIZE=true` duri
 
 ## API
 
-All routes are prefixed with `/api`.
+The default local port is `8721`. All routes are prefixed with `/api`.
 
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`

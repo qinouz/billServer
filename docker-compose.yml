@@ -2,7 +2,7 @@ services:
   api:
     build: .
     ports:
-      - "3000:3000"
+      - "8721:8721"
     environment:
       - DB_HOST=mysql
       - DB_PORT=3306
