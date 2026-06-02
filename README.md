@@ -12,6 +12,45 @@ npm run start:dev
 
 Create the MySQL schema with `sql/schema.sql`, or set `DB_SYNCHRONIZE=true` during local development.
 
+## Production
+
+Create `.env.prd` from `.env.example`, fill in the production values, then start MySQL with Docker:
+
+```bash
+docker-compose --env-file .env.prd -f docker-compose.prd.yml up -d
+```
+
+The production compose file only starts MySQL. MySQL is initialized with `sql/schema.sql` on first boot, and database data is stored in the `mysql_prd_data` volume.
+
+Build and run the NestJS API on the host machine:
+
+```bash
+npm ci
+npm run serve:prd
+```
+
+On Windows, `npm run serve:prd` sets `APP_ENV=prd` and `NODE_ENV=production`, loads `.env.prd`, builds `dist`, and starts `node dist/main.js`.
+
+Configure host Nginx with `deploy/nginx/api.jingqiu.top.conf` and proxy HTTPS requests to `http://127.0.0.1:8721`. The request flow is:
+
+```text
+https://api.jingqiu.top
+  -> Windows Nginx
+  -> http://127.0.0.1:8721
+  -> NestJS API
+  -> Docker MySQL
+```
+
+Useful production commands:
+
+```bash
+docker-compose --env-file .env.prd -f docker-compose.prd.yml ps
+docker-compose --env-file .env.prd -f docker-compose.prd.yml logs -f mysql
+npm run build:prd
+npm run start:prd
+npm run serve:prd
+```
+
 ## API
 
 The default local port is `8721`. All routes are prefixed with `/api`.
@@ -58,4 +97,5 @@ Configure MiMo image recognition with:
 MIMO_API_KEY=your_mimo_api_key
 MIMO_API_URL=https://token-plan-cn.xiaomimimo.com/v1/chat/completions
 MIMO_MODEL=mimo-v2.5
+MIMO_TIMEOUT_MS=60000
 ```

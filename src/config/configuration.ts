@@ -22,5 +22,6 @@ export default () => ({
       process.env.MIMO_API_URL ??
       'https://token-plan-cn.xiaomimimo.com/v1/chat/completions',
     model: process.env.MIMO_MODEL ?? 'mimo-v2.5',
+    timeoutMs: parseInt(process.env.MIMO_TIMEOUT_MS ?? '60000', 10),
   },
 });

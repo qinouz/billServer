@@ -2,26 +2,33 @@ services:
   api:
     build: .
     ports:
-      - "8721:8721"
+      - "${PORT:-8721}:${PORT:-8721}"
     environment:
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USERNAME=root
-      - DB_PASSWORD=your_password
-      - DB_DATABASE=bill_db
-      - JWT_SECRET=your_jwt_secret
-      - WX_APPID=your_wx_appid
-      - WX_SECRET=your_wx_secret
+      NODE_ENV: ${NODE_ENV:-prd}
+      PORT: ${PORT:-8721}
+      DB_HOST: ${COMPOSE_DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE:-bill_db}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      WX_APPID: ${WX_APPID}
+      WX_SECRET: ${WX_SECRET}
+      MIMO_API_KEY: ${MIMO_API_KEY}
+      MIMO_API_URL: ${MIMO_API_URL:-https://token-plan-cn.xiaomimimo.com/v1/chat/completions}
+      MIMO_MODEL: ${MIMO_MODEL:-mimo-v2.5}
     depends_on:
       - mysql
 
   mysql:
     image: mysql:8.0
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=your_password
-      - MYSQL_DATABASE=bill_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-bill_db}
     volumes:
       - mysql_data:/var/lib/mysql
 

@@ -10,12 +10,19 @@ import { ReminderModule } from './reminder/reminder.module';
 import { UserModule } from './user/user.module';
 import { VoiceModule } from './voice/voice.module';
 
+const appEnv = process.env.APP_ENV ?? process.env.NODE_ENV;
+const envFilePath = [
+  ...(appEnv ? [`.env.${appEnv}`] : []),
+  '.env',
+  '.env.example',
+];
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: ['.env', '.env.example'],
+      envFilePath,
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

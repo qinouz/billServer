@@ -1,5 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
@@ -70,50 +71,84 @@ export class PhotoService {
     "date": "YYYY-MM-DD"，没有日期则使用今天,
     "remark": 商品、商户或其他备注
   }
-]`;
+]。不要返回 Markdown，不要返回解释文字。`;
 
-    const response = await firstValueFrom(
-      this.httpService.post(
-        this.config.get<string>('mimo.apiUrl') ??
-          'https://token-plan-cn.xiaomimimo.com/v1/chat/completions',
-        {
-          model: this.config.get<string>('mimo.model'),
-          messages: [
-            { role: 'system', content: systemPrompt },
-            {
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: imageUrl } },
-                { type: 'text', text: userPrompt },
-              ],
-            },
-          ],
-          max_completion_tokens: 3048,
-          temperature: 0.1,
-          stream: false,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': apiKey,
+    let response;
+    try {
+      response = await firstValueFrom(
+        this.httpService.post(
+          this.config.get<string>('mimo.apiUrl') ??
+            'https://token-plan-cn.xiaomimimo.com/v1/chat/completions',
+          {
+            model: this.config.get<string>('mimo.model'),
+            messages: [
+              { role: 'system', content: systemPrompt },
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: imageUrl } },
+                  { type: 'text', text: userPrompt },
+                ],
+              },
+            ],
+            max_completion_tokens: 3048,
+            temperature: 0.1,
+            stream: false,
           },
-          timeout: 30000,
-        },
-      ),
-    );
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'api-key': apiKey,
+            },
+            timeout: this.config.get<number>('mimo.timeoutMs') ?? 60000,
+          },
+        ),
+      );
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (error.code === 'ECONNABORTED') {
+          throw new BadRequestException('图片识别服务响应超时，请稍后重试或换一张更清晰的图片');
+        }
+        throw new BadRequestException(`图片识别服务请求失败：${error.message}`);
+      }
+      throw error;
+    }
 
-    const content = response.data?.choices?.[0]?.message?.content ?? '';
-    const jsonMatch = content.match(/\[[\s\S]*\]/) ?? content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    const content = this.extractResponseContent(response.data);
+    const jsonText = this.extractJsonText(content);
+    if (!jsonText) {
+      console.warn('MiMo photo response did not contain JSON:', content.slice(0, 1000));
       throw new BadRequestException('图片解析结果格式错误');
     }
 
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonText);
       return Array.isArray(parsed) ? parsed : [parsed];
     } catch {
+      console.warn('MiMo photo response JSON parse failed:', jsonText.slice(0, 1000));
       throw new BadRequestException('图片解析结果不是合法 JSON');
     }
+  }
+
+  private extractResponseContent(data: any): string {
+    const content = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? '';
+
+    if (typeof content === 'string') {
+      return content.trim();
+    }
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => (typeof item === 'string' ? item : item?.text ?? ''))
+        .join('\n')
+        .trim();
+    }
+    return '';
+  }
+
+  private extractJsonText(content: string) {
+    const fencedJson = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    const candidate = fencedJson?.[1] ?? content;
+    return candidate.match(/\[[\s\S]*\]/)?.[0] ?? candidate.match(/\{[\s\S]*\}/)?.[0];
   }
 
   private parseTextFallback(text: string): ParsedPhotoItem[] {

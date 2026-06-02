@@ -30,11 +30,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
           ? exception.message
           : 'Internal server error';
 
-    response.status(status).json({
-      code: status,
-      message: Array.isArray(message) ? message.join('; ') : message,
-      error: HttpStatus[status] ?? 'Error',
-      path: request.originalUrl ?? request.url,
-    });
+    response
+      .status(status)
+      .type('application/json; charset=utf-8')
+      .json({
+        code: status,
+        message: Array.isArray(message) ? message.join('; ') : message,
+        error: HttpStatus[status] ?? 'Error',
+        path: request.originalUrl ?? request.url,
+      });
   }
 }

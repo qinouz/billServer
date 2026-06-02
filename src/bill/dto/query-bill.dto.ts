@@ -1,7 +1,11 @@
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 export class QueryBillDto {
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
   @IsOptional()
   @Transform(({ value }) => {
     if (value === '' || value === 'undefined' || value === 'null') {

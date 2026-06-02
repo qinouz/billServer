@@ -5,7 +5,10 @@
   "scripts": {
     "start": "nest start",
     "start:dev": "nest start --watch",
+    "start:prd": "set APP_ENV=prd&& set NODE_ENV=production&& node dist/main.js",
     "build": "nest build",
+    "build:prd": "npm run build",
+    "serve:prd": "npm run build:prd && npm run start:prd",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json"
