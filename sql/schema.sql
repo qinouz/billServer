@@ -1,3 +1,6 @@
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS bill_db DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE bill_db;
@@ -48,6 +51,42 @@ CREATE TABLE IF NOT EXISTS reminders (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提醒表';
+
+ALTER TABLE users
+  MODIFY openid VARCHAR(64) NOT NULL COMMENT '微信openid',
+  MODIFY unionid VARCHAR(64) DEFAULT NULL COMMENT '微信unionid',
+  MODIFY nickname VARCHAR(50) DEFAULT '新用户' COMMENT '昵称',
+  MODIFY avatar_url VARCHAR(255) DEFAULT '' COMMENT '头像URL',
+  COMMENT='用户表';
+
+ALTER TABLE categories
+  MODIFY user_id BIGINT DEFAULT NULL COMMENT '用户ID，NULL为系统分类',
+  MODIFY name VARCHAR(50) NOT NULL COMMENT '分类名称',
+  MODIFY icon VARCHAR(50) DEFAULT '' COMMENT '图标标识',
+  MODIFY type ENUM('income', 'expense') NOT NULL COMMENT '类型',
+  MODIFY sort_order INT DEFAULT 0 COMMENT '排序',
+  MODIFY is_system BOOLEAN DEFAULT FALSE COMMENT '是否系统分类',
+  COMMENT='分类表';
+
+ALTER TABLE bills
+  MODIFY user_id BIGINT NOT NULL COMMENT '用户ID',
+  MODIFY category_id BIGINT NOT NULL COMMENT '分类ID',
+  MODIFY amount DECIMAL(10,2) NOT NULL COMMENT '金额',
+  MODIFY type ENUM('income', 'expense') NOT NULL COMMENT '类型',
+  MODIFY remark VARCHAR(200) DEFAULT '' COMMENT '备注',
+  MODIFY bill_date DATE NOT NULL COMMENT '账单日期',
+  MODIFY is_deleted BOOLEAN DEFAULT FALSE COMMENT '软删除',
+  COMMENT='账单表';
+
+ALTER TABLE reminders
+  MODIFY user_id BIGINT NOT NULL COMMENT '用户ID',
+  MODIFY reminder_time TIME NOT NULL COMMENT '提醒时间',
+  MODIFY is_enabled BOOLEAN DEFAULT TRUE COMMENT '是否启用',
+  COMMENT='提醒表';
+
+UPDATE users
+SET nickname = '新用户'
+WHERE nickname = 'æ–°ç”¨æˆ·';
 
 UPDATE categories c
 JOIN (

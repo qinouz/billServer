@@ -26,6 +26,7 @@ import { VoiceModule } from './voice/voice.module';
         username: config.get<string>('database.username'),
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
+        charset: 'utf8mb4',
         autoLoadEntities: true,
         synchronize: config.get<boolean>('database.synchronize'),
       }),
