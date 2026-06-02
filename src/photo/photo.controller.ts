@@ -1,4 +1,13 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CurrentUser, CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PhotoService } from './photo.service';
 
@@ -8,7 +17,12 @@ export class PhotoController {
   constructor(private readonly photoService: PhotoService) {}
 
   @Post('recognize')
-  recognize(@Body() body: Record<string, unknown>) {
-    return this.photoService.recognize(body);
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  recognize(
+    @CurrentUser() user: CurrentUserPayload,
+    @UploadedFile() file: any,
+    @Body() body: { text?: string },
+  ) {
+    return this.photoService.recognize(String(user.userId), file, body);
   }
 }

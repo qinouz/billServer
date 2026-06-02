@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BillType } from '../category/entities/category.entity';
 import { Bill } from '../bill/entities/bill.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
@@ -34,21 +33,50 @@ export class UserService {
   async getStats(userId: string) {
     const bills = await this.billRepository.find({
       where: { userId, isDeleted: false },
+      select: ['billDate'],
+      order: { billDate: 'DESC' },
     });
 
-    return bills.reduce(
-      (stats, bill) => {
-        const amount = Number(bill.amount);
-        stats.total += 1;
-        if (bill.type === BillType.Income) {
-          stats.income += amount;
-        } else {
-          stats.expense += amount;
+    const dates = [...new Set(bills.map((bill) => bill.billDate))].sort().reverse();
+    const dateSet = new Set(dates);
+    const billCount = bills.length;
+    const recordDays = dates.length;
+    let consecutiveDays = 0;
+
+    if (dates.length > 0) {
+      const today = this.startOfLocalDay(new Date());
+      const latestRecordDate = this.startOfLocalDay(new Date(dates[0]));
+      const diffToday = Math.floor(
+        (today.getTime() - latestRecordDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (diffToday <= 1) {
+        for (let i = 0; i < 365; i += 1) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+
+          if (dateSet.has(this.formatLocalDate(date))) {
+            consecutiveDays += 1;
+          } else if (i > 0) {
+            break;
+          }
         }
-        stats.balance = stats.income - stats.expense;
-        return stats;
-      },
-      { total: 0, income: 0, expense: 0, balance: 0 },
-    );
+      }
+    }
+
+    return { consecutiveDays, recordDays, billCount };
+  }
+
+  private startOfLocalDay(date: Date) {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
+  }
+
+  private formatLocalDate(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

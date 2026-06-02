@@ -16,4 +16,11 @@ export default () => ({
     appid: process.env.WX_APPID ?? '',
     secret: process.env.WX_SECRET ?? '',
   },
+  mimo: {
+    apiKey: process.env.MIMO_API_KEY ?? '',
+    apiUrl:
+      process.env.MIMO_API_URL ??
+      'https://token-plan-cn.xiaomimimo.com/v1/chat/completions',
+    model: process.env.MIMO_MODEL ?? 'mimo-v2.5',
+  },
 });

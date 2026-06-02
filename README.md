@@ -37,3 +37,25 @@ The default local port is `8721`. All routes are prefixed with `/api`.
 - `POST /api/voice/recognize`
 - `POST /api/voice/parse`
 - `POST /api/photo/recognize`
+
+### Photo Recognition
+
+`POST /api/photo/recognize` accepts `multipart/form-data` with a `file` field.
+The response contains candidate bill items that the client should show for user
+confirmation before calling `POST /api/bills`.
+
+For text-only debugging, the same route also accepts JSON:
+
+```json
+{
+  "text": "付款成功 28.00 餐厅"
+}
+```
+
+Configure MiMo image recognition with:
+
+```env
+MIMO_API_KEY=your_mimo_api_key
+MIMO_API_URL=https://token-plan-cn.xiaomimimo.com/v1/chat/completions
+MIMO_MODEL=mimo-v2.5
+```
