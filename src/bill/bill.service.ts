@@ -65,7 +65,10 @@ export class BillService {
     return { billId: bill.id };
   }
 
-  async createBatch(userId: string, dtos: CreateBillDto[]) {
+  async createBatch(
+    userId: string,
+    dtos?: Array<CreateBillDto & { categoryName?: string }>,
+  ) {
     if (!Array.isArray(dtos) || dtos.length === 0) {
       throw new BadRequestException('账单列表不能为空');
     }
@@ -75,15 +78,19 @@ export class BillService {
     }
 
     const bills = await this.billRepository.save(
-      dtos.map((dto) =>
-        this.billRepository.create({
-          ...dto,
+      dtos.map((dto) => {
+        const { categoryId, amount, type, remark, billDate } = dto;
+        return this.billRepository.create({
+          categoryId,
+          amount: Number(amount).toFixed(2),
+          type,
+          remark,
+          billDate,
           userId,
-          amount: dto.amount.toFixed(2),
-        }),
-      ),
+        });
+      }),
     );
-    return { billIds: bills.map((bill) => bill.id) };
+    return { billIds: bills.map((bill) => bill.id), count: bills.length };
   }
 
   async update(userId: string, id: string, dto: UpdateBillDto) {

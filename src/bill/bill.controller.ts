@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseArrayPipe,
   Post,
   Put,
   Query,
@@ -45,9 +44,9 @@ export class BillController {
   @Post('batch')
   createBatch(
     @CurrentUser() user: CurrentUserPayload,
-    @Body(new ParseArrayPipe({ items: CreateBillDto }))
-    dtos: CreateBillDto[],
+    @Body() body: CreateBillDto[] | { items?: Array<CreateBillDto & { categoryName?: string }> },
   ) {
+    const dtos = Array.isArray(body) ? body : body.items;
     return this.billService.createBatch(String(user.userId), dtos);
   }
 
