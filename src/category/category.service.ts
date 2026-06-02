@@ -7,12 +7,35 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { BillType, Category } from './entities/category.entity';
 
 const SYSTEM_CATEGORIES: Array<Pick<Category, 'name' | 'icon' | 'type' | 'sortOrder'>> = [
-  { name: '餐饮', icon: 'food', type: BillType.Expense, sortOrder: 10 },
-  { name: '交通', icon: 'transport', type: BillType.Expense, sortOrder: 20 },
-  { name: '购物', icon: 'shopping', type: BillType.Expense, sortOrder: 30 },
-  { name: '住房', icon: 'home', type: BillType.Expense, sortOrder: 40 },
-  { name: '工资', icon: 'salary', type: BillType.Income, sortOrder: 10 },
-  { name: '奖金', icon: 'bonus', type: BillType.Income, sortOrder: 20 },
+  { name: '餐饮', icon: '🍜', type: BillType.Expense, sortOrder: 1 },
+  { name: '购物', icon: '🛒', type: BillType.Expense, sortOrder: 2 },
+  { name: '日用', icon: '🏠', type: BillType.Expense, sortOrder: 3 },
+  { name: '交通', icon: '🚗', type: BillType.Expense, sortOrder: 4 },
+  { name: '蔬菜', icon: '🥬', type: BillType.Expense, sortOrder: 5 },
+  { name: '水果', icon: '🍎', type: BillType.Expense, sortOrder: 6 },
+  { name: '零食', icon: '🍪', type: BillType.Expense, sortOrder: 7 },
+  { name: '运动', icon: '⚽', type: BillType.Expense, sortOrder: 8 },
+  { name: '娱乐', icon: '🎮', type: BillType.Expense, sortOrder: 9 },
+  { name: '通讯', icon: '📱', type: BillType.Expense, sortOrder: 10 },
+  { name: '服饰', icon: '👔', type: BillType.Expense, sortOrder: 11 },
+  { name: '美容', icon: '💄', type: BillType.Expense, sortOrder: 12 },
+  { name: '住房', icon: '🏡', type: BillType.Expense, sortOrder: 13 },
+  { name: '居家', icon: '🛋️', type: BillType.Expense, sortOrder: 14 },
+  { name: '孩子', icon: '👶', type: BillType.Expense, sortOrder: 15 },
+  { name: '长辈', icon: '👴', type: BillType.Expense, sortOrder: 16 },
+  { name: '社交', icon: '🤝', type: BillType.Expense, sortOrder: 17 },
+  { name: '旅行', icon: '✈️', type: BillType.Expense, sortOrder: 18 },
+  { name: '烟酒', icon: '🚬', type: BillType.Expense, sortOrder: 19 },
+  { name: '数码', icon: '💻', type: BillType.Expense, sortOrder: 20 },
+  { name: '汽车', icon: '🚙', type: BillType.Expense, sortOrder: 21 },
+  { name: '医疗', icon: '💊', type: BillType.Expense, sortOrder: 22 },
+  { name: '书籍', icon: '📚', type: BillType.Expense, sortOrder: 23 },
+  { name: '学习', icon: '📖', type: BillType.Expense, sortOrder: 24 },
+  { name: '工资', icon: '💰', type: BillType.Income, sortOrder: 1 },
+  { name: '兼职', icon: '💼', type: BillType.Income, sortOrder: 2 },
+  { name: '理财', icon: '📈', type: BillType.Income, sortOrder: 3 },
+  { name: '礼金', icon: '🧧', type: BillType.Income, sortOrder: 4 },
+  { name: '其它', icon: '💵', type: BillType.Income, sortOrder: 5 },
 ];
 
 @Injectable()
@@ -69,12 +92,19 @@ export class CategoryService {
 
   async initSystemCategories() {
     const createdIds: string[] = [];
+    const seedKeys = new Set(
+      SYSTEM_CATEGORIES.map((item) => `${item.type}:${item.name}`),
+    );
 
     for (const item of SYSTEM_CATEGORIES) {
       const existed = await this.categoryRepository.findOne({
         where: { userId: IsNull(), name: item.name, type: item.type, isSystem: true },
       });
       if (existed) {
+        await this.categoryRepository.update(existed.id, {
+          icon: item.icon,
+          sortOrder: item.sortOrder,
+        });
         continue;
       }
       const category = await this.categoryRepository.save(
@@ -87,7 +117,26 @@ export class CategoryService {
       createdIds.push(category.id);
     }
 
-    return { createdIds };
+    const removedIds: string[] = [];
+    const systemCategories = await this.categoryRepository.find({
+      where: { userId: IsNull(), isSystem: true },
+    });
+
+    for (const category of systemCategories) {
+      if (seedKeys.has(`${category.type}:${category.name}`)) {
+        continue;
+      }
+
+      const usedCount = await this.billRepository.count({
+        where: { categoryId: category.id, isDeleted: false },
+      });
+      if (usedCount === 0) {
+        await this.categoryRepository.remove(category);
+        removedIds.push(category.id);
+      }
+    }
+
+    return { createdIds, removedIds };
   }
 
   private async findOwned(userId: string, id: string) {

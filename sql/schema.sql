@@ -49,26 +49,114 @@ CREATE TABLE IF NOT EXISTS reminders (
   UNIQUE KEY uk_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提醒表';
 
-INSERT INTO categories (user_id, name, icon, type, sort_order, is_system)
-SELECT NULL, '餐饮', 'food', 'expense', 10, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE user_id IS NULL AND name = '餐饮' AND type = 'expense');
+UPDATE categories c
+JOIN (
+  SELECT '餐饮' name, '🍜' icon, 'expense' type, 1 sort_order UNION ALL
+  SELECT '购物', '🛒', 'expense', 2 UNION ALL
+  SELECT '日用', '🏠', 'expense', 3 UNION ALL
+  SELECT '交通', '🚗', 'expense', 4 UNION ALL
+  SELECT '蔬菜', '🥬', 'expense', 5 UNION ALL
+  SELECT '水果', '🍎', 'expense', 6 UNION ALL
+  SELECT '零食', '🍪', 'expense', 7 UNION ALL
+  SELECT '运动', '⚽', 'expense', 8 UNION ALL
+  SELECT '娱乐', '🎮', 'expense', 9 UNION ALL
+  SELECT '通讯', '📱', 'expense', 10 UNION ALL
+  SELECT '服饰', '👔', 'expense', 11 UNION ALL
+  SELECT '美容', '💄', 'expense', 12 UNION ALL
+  SELECT '住房', '🏡', 'expense', 13 UNION ALL
+  SELECT '居家', '🛋️', 'expense', 14 UNION ALL
+  SELECT '孩子', '👶', 'expense', 15 UNION ALL
+  SELECT '长辈', '👴', 'expense', 16 UNION ALL
+  SELECT '社交', '🤝', 'expense', 17 UNION ALL
+  SELECT '旅行', '✈️', 'expense', 18 UNION ALL
+  SELECT '烟酒', '🚬', 'expense', 19 UNION ALL
+  SELECT '数码', '💻', 'expense', 20 UNION ALL
+  SELECT '汽车', '🚙', 'expense', 21 UNION ALL
+  SELECT '医疗', '💊', 'expense', 22 UNION ALL
+  SELECT '书籍', '📚', 'expense', 23 UNION ALL
+  SELECT '学习', '📖', 'expense', 24 UNION ALL
+  SELECT '工资', '💰', 'income', 1 UNION ALL
+  SELECT '兼职', '💼', 'income', 2 UNION ALL
+  SELECT '理财', '📈', 'income', 3 UNION ALL
+  SELECT '礼金', '🧧', 'income', 4 UNION ALL
+  SELECT '其它', '💵', 'income', 5
+) seed ON c.user_id IS NULL AND c.name = seed.name AND c.type = seed.type
+SET c.icon = seed.icon, c.sort_order = seed.sort_order, c.is_system = TRUE;
 
 INSERT INTO categories (user_id, name, icon, type, sort_order, is_system)
-SELECT NULL, '交通', 'transport', 'expense', 20, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE user_id IS NULL AND name = '交通' AND type = 'expense');
+SELECT NULL, seed.name, seed.icon, seed.type, seed.sort_order, TRUE
+FROM (
+  SELECT '餐饮' name, '🍜' icon, 'expense' type, 1 sort_order UNION ALL
+  SELECT '购物', '🛒', 'expense', 2 UNION ALL
+  SELECT '日用', '🏠', 'expense', 3 UNION ALL
+  SELECT '交通', '🚗', 'expense', 4 UNION ALL
+  SELECT '蔬菜', '🥬', 'expense', 5 UNION ALL
+  SELECT '水果', '🍎', 'expense', 6 UNION ALL
+  SELECT '零食', '🍪', 'expense', 7 UNION ALL
+  SELECT '运动', '⚽', 'expense', 8 UNION ALL
+  SELECT '娱乐', '🎮', 'expense', 9 UNION ALL
+  SELECT '通讯', '📱', 'expense', 10 UNION ALL
+  SELECT '服饰', '👔', 'expense', 11 UNION ALL
+  SELECT '美容', '💄', 'expense', 12 UNION ALL
+  SELECT '住房', '🏡', 'expense', 13 UNION ALL
+  SELECT '居家', '🛋️', 'expense', 14 UNION ALL
+  SELECT '孩子', '👶', 'expense', 15 UNION ALL
+  SELECT '长辈', '👴', 'expense', 16 UNION ALL
+  SELECT '社交', '🤝', 'expense', 17 UNION ALL
+  SELECT '旅行', '✈️', 'expense', 18 UNION ALL
+  SELECT '烟酒', '🚬', 'expense', 19 UNION ALL
+  SELECT '数码', '💻', 'expense', 20 UNION ALL
+  SELECT '汽车', '🚙', 'expense', 21 UNION ALL
+  SELECT '医疗', '💊', 'expense', 22 UNION ALL
+  SELECT '书籍', '📚', 'expense', 23 UNION ALL
+  SELECT '学习', '📖', 'expense', 24 UNION ALL
+  SELECT '工资', '💰', 'income', 1 UNION ALL
+  SELECT '兼职', '💼', 'income', 2 UNION ALL
+  SELECT '理财', '📈', 'income', 3 UNION ALL
+  SELECT '礼金', '🧧', 'income', 4 UNION ALL
+  SELECT '其它', '💵', 'income', 5
+) seed
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM categories c
+  WHERE c.user_id IS NULL AND c.name = seed.name AND c.type = seed.type
+);
 
-INSERT INTO categories (user_id, name, icon, type, sort_order, is_system)
-SELECT NULL, '购物', 'shopping', 'expense', 30, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE user_id IS NULL AND name = '购物' AND type = 'expense');
-
-INSERT INTO categories (user_id, name, icon, type, sort_order, is_system)
-SELECT NULL, '住房', 'home', 'expense', 40, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE user_id IS NULL AND name = '住房' AND type = 'expense');
-
-INSERT INTO categories (user_id, name, icon, type, sort_order, is_system)
-SELECT NULL, '工资', 'salary', 'income', 10, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE user_id IS NULL AND name = '工资' AND type = 'income');
-
-INSERT INTO categories (user_id, name, icon, type, sort_order, is_system)
-SELECT NULL, '奖金', 'bonus', 'income', 20, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE user_id IS NULL AND name = '奖金' AND type = 'income');
+DELETE c
+FROM categories c
+LEFT JOIN bills b ON b.category_id = c.id AND b.is_deleted = FALSE
+LEFT JOIN (
+  SELECT '餐饮' name, 'expense' type UNION ALL
+  SELECT '购物', 'expense' UNION ALL
+  SELECT '日用', 'expense' UNION ALL
+  SELECT '交通', 'expense' UNION ALL
+  SELECT '蔬菜', 'expense' UNION ALL
+  SELECT '水果', 'expense' UNION ALL
+  SELECT '零食', 'expense' UNION ALL
+  SELECT '运动', 'expense' UNION ALL
+  SELECT '娱乐', 'expense' UNION ALL
+  SELECT '通讯', 'expense' UNION ALL
+  SELECT '服饰', 'expense' UNION ALL
+  SELECT '美容', 'expense' UNION ALL
+  SELECT '住房', 'expense' UNION ALL
+  SELECT '居家', 'expense' UNION ALL
+  SELECT '孩子', 'expense' UNION ALL
+  SELECT '长辈', 'expense' UNION ALL
+  SELECT '社交', 'expense' UNION ALL
+  SELECT '旅行', 'expense' UNION ALL
+  SELECT '烟酒', 'expense' UNION ALL
+  SELECT '数码', 'expense' UNION ALL
+  SELECT '汽车', 'expense' UNION ALL
+  SELECT '医疗', 'expense' UNION ALL
+  SELECT '书籍', 'expense' UNION ALL
+  SELECT '学习', 'expense' UNION ALL
+  SELECT '工资', 'income' UNION ALL
+  SELECT '兼职', 'income' UNION ALL
+  SELECT '理财', 'income' UNION ALL
+  SELECT '礼金', 'income' UNION ALL
+  SELECT '其它', 'income'
+) seed ON seed.name = c.name AND seed.type = c.type
+WHERE c.user_id IS NULL
+  AND c.is_system = TRUE
+  AND b.id IS NULL
+  AND seed.name IS NULL;
