@@ -1,0 +1,65 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      APP_ENV: prd
+      NODE_ENV: production
+      PORT: ${PORT:-8721}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.home}
+      DB_DATABASE: ${DB_DATABASE:-bill_db}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env.home}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      WX_APPID: ${WX_APPID:-}
+      WX_SECRET: ${WX_SECRET:-}
+      MIMO_API_KEY: ${MIMO_API_KEY:-}
+      MIMO_API_URL: ${MIMO_API_URL:-https://token-plan-cn.xiaomimimo.com/v1/chat/completions}
+      MIMO_MODEL: ${MIMO_MODEL:-mimo-v2.5}
+      MIMO_TIMEOUT_MS: ${MIMO_TIMEOUT_MS:-60000}
+    ports:
+      - "${API_BIND_HOST:-0.0.0.0}:${PORT:-8721}:${PORT:-8721}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:' + (process.env.PORT || '8721') + '/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.home}
+      MYSQL_DATABASE: ${DB_DATABASE:-bill_db}
+    ports:
+      - "${MYSQL_BIND_HOST:-127.0.0.1}:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_home_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  mysql_home_data:

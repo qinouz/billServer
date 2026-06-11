@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BillModule } from './bill/bill.module';
 import { CategoryModule } from './category/category.module';
 import { PhotoModule } from './photo/photo.module';
+import { HealthModule } from './health/health.module';
 import { ReminderModule } from './reminder/reminder.module';
 import { UserModule } from './user/user.module';
 import { VoiceModule } from './voice/voice.module';
@@ -39,6 +40,7 @@ const envFilePath = [
       }),
     }),
     AuthModule,
+    HealthModule,
     UserModule,
     BillModule,
     CategoryModule,

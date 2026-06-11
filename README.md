@@ -14,6 +14,9 @@ Create the MySQL schema with `sql/schema.sql`, or set `DB_SYNCHRONIZE=true` duri
 
 ## Production
 
+For a home server deployment where Docker runs both the API and MySQL, see
+`deploy/HOME_SERVER.md`.
+
 Create `.env.prd` from `.env.example`, fill in the production values, then start MySQL with Docker:
 
 ```bash
