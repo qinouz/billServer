@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, IsNull, Repository } from 'typeorm';
 import { BillType, Category } from '../category/entities/category.entity';
+import { MAX_BILL_AMOUNT, MIN_BILL_AMOUNT } from './bill.constants';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { QueryBillDto } from './dto/query-bill.dto';
 import { UpdateBillDto } from './dto/update-bill.dto';
@@ -55,11 +56,12 @@ export class BillService {
 
   async create(userId: string, dto: CreateBillDto) {
     await this.ensureCategoryAvailable(userId, dto.categoryId);
+    const amount = this.normalizeAmount(dto.amount);
     const bill = await this.billRepository.save(
       this.billRepository.create({
         ...dto,
         userId,
-        amount: dto.amount.toFixed(2),
+        amount,
       }),
     );
     return { billId: bill.id };
@@ -82,7 +84,7 @@ export class BillService {
         const { categoryId, amount, type, remark, billDate } = dto;
         return this.billRepository.create({
           categoryId,
-          amount: Number(amount).toFixed(2),
+          amount: this.normalizeAmount(amount),
           type,
           remark,
           billDate,
@@ -107,7 +109,8 @@ export class BillService {
     await this.billRepository.save({
       ...bill,
       ...dto,
-      amount: dto.amount === undefined ? bill.amount : dto.amount.toFixed(2),
+      amount:
+        dto.amount === undefined ? bill.amount : this.normalizeAmount(dto.amount),
     });
     return { billId: id };
   }
@@ -173,6 +176,25 @@ export class BillService {
     if (!category) {
       throw new BadRequestException('分类不存在');
     }
+  }
+
+  private normalizeAmount(value: unknown) {
+    const amount = Number(value);
+    if (
+      !Number.isFinite(amount) ||
+      amount < MIN_BILL_AMOUNT ||
+      amount > MAX_BILL_AMOUNT
+    ) {
+      throw new BadRequestException(
+        `金额必须在 ${MIN_BILL_AMOUNT} 到 ${MAX_BILL_AMOUNT} 之间`,
+      );
+    }
+
+    if (!Number.isInteger(amount * 100)) {
+      throw new BadRequestException('金额最多只能保留两位小数');
+    }
+
+    return amount.toFixed(2);
   }
 
   private toListItem(bill: Bill) {

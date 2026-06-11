@@ -9,6 +9,7 @@
     "build": "nest build",
     "build:prd": "npm run build",
     "serve:prd": "npm run build:prd && npm run start:prd",
+    "import:cloud": "node scripts/import-cloud-export.js",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json"

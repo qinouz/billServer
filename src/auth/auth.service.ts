@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
@@ -14,6 +14,8 @@ interface WechatSessionResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly httpService: HttpService,
@@ -22,31 +24,47 @@ export class AuthService {
   ) {}
 
   async login(code: string) {
-    const { data } = await firstValueFrom(
-      this.httpService.get<WechatSessionResponse>(
-        'https://api.weixin.qq.com/sns/jscode2session',
-        {
-          params: {
-            appid: this.config.get<string>('wechat.appid'),
-            secret: this.config.get<string>('wechat.secret'),
-            js_code: code,
-            grant_type: 'authorization_code',
+    let data: WechatSessionResponse;
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<WechatSessionResponse>(
+          'https://api.weixin.qq.com/sns/jscode2session',
+          {
+            params: {
+              appid: this.config.get<string>('wechat.appid'),
+              secret: this.config.get<string>('wechat.secret'),
+              js_code: code,
+              grant_type: 'authorization_code',
+            },
           },
-        },
-      ),
-    );
+        ),
+      );
+      data = response.data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`wechat jscode2session request failed: ${message}`);
+      throw new UnauthorizedException('微信登录失败');
+    }
 
     if (data.errcode || !data.openid) {
+      this.logger.warn(
+        `wechat login failed errcode=${data.errcode ?? 'missing-openid'} errmsg=${data.errmsg ?? ''}`,
+      );
       throw new UnauthorizedException(data.errmsg || '微信登录失败');
     }
 
     let user = await this.userService.findByOpenid(data.openid);
+    const existed = Boolean(user);
     if (!user) {
       user = await this.userService.create({
         openid: data.openid,
         unionid: data.unionid,
       });
     }
+
+    this.logger.log(
+      `login openid=${data.openid} userId=${user.id} existed=${existed}`,
+    );
 
     return this.signUser(user.id, user.openid, {
       nickname: user.nickname,
