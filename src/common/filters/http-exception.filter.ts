@@ -33,11 +33,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response
       .status(status)
       .type('application/json; charset=utf-8')
-      .json({
+      .send(escapeUnicodeJson({
         code: status,
         message: Array.isArray(message) ? message.join('; ') : message,
         error: HttpStatus[status] ?? 'Error',
         path: request.originalUrl ?? request.url,
-      });
+      }));
   }
+}
+
+function escapeUnicodeJson(payload: unknown) {
+  return JSON.stringify(payload).replace(/[\u007f-\uffff]/g, (char) => {
+    return `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+  });
 }

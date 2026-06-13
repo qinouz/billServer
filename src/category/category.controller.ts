@@ -13,12 +13,12 @@ export class CategoryController {
 
   @Get()
   findAll(@CurrentUser() user: CurrentUserPayload, @Query('type') type?: BillType) {
-    return this.categoryService.findAll(String(user.userId), type);
+    return this.categoryService.findAll(user.userId, type);
   }
 
   @Post()
   create(@CurrentUser() user: CurrentUserPayload, @Body() dto: CreateCategoryDto) {
-    return this.categoryService.create(String(user.userId), dto);
+    return this.categoryService.create(user.userId, dto);
   }
 
   @Put(':id')
@@ -27,12 +27,12 @@ export class CategoryController {
     @Param('id') id: string,
     @Body() dto: UpdateCategoryDto,
   ) {
-    return this.categoryService.update(String(user.userId), id, dto);
+    return this.categoryService.update(user.userId, id, dto);
   }
 
   @Delete(':id')
   remove(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
-    return this.categoryService.remove(String(user.userId), id);
+    return this.categoryService.remove(user.userId, id);
   }
 
   @Post('init')

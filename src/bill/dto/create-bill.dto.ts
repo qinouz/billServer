@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Max,
@@ -10,17 +10,17 @@ import {
   Min,
 } from 'class-validator';
 import { BillType } from '../../category/entities/category.entity';
-import { MAX_BILL_AMOUNT, MIN_BILL_AMOUNT } from '../bill.constants';
+import { MAX_BILL_AMOUNT_CENTS, MIN_BILL_AMOUNT_CENTS } from '../bill.constants';
 
 export class CreateBillDto {
   @IsString()
   categoryId: string;
 
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(MIN_BILL_AMOUNT)
-  @Max(MAX_BILL_AMOUNT)
-  amount: number;
+  @IsInt()
+  @Min(MIN_BILL_AMOUNT_CENTS)
+  @Max(MAX_BILL_AMOUNT_CENTS)
+  amountCents: number;
 
   @IsEnum(BillType)
   type: BillType;

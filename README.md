@@ -58,6 +58,14 @@ npm run serve:prd
 
 The default local port is `8721`. All routes are prefixed with `/api`.
 
+Money fields use integer cents in API contracts and database storage. For
+example, `amountCents: 1234` means `12.34` yuan. Clients should only format
+yuan values for display.
+
+Audit time fields use Unix milliseconds in API responses. For example,
+`createdAt: 1781265600000`. Business date and time fields remain strings:
+`billDate` uses `YYYY-MM-DD`, and `reminderTime` uses `HH:mm`.
+
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - `GET /api/users/profile`
@@ -80,7 +88,46 @@ The default local port is `8721`. All routes are prefixed with `/api`.
 - `POST /api/voice/parse`
 - `POST /api/photo/recognize`
 
-### Photo Recognition
+### Bills
+
+`POST /api/bills`, `POST /api/bills/batch`, and `PUT /api/bills/:id` accept
+`amountCents`.
+
+When `GET /api/bills` is queried with `month=YYYY-MM`, the response includes a
+month-level `summary` beside the paginated `list`:
+
+```json
+{
+  "list": [],
+  "pagination": {
+    "pageNo": 1,
+    "pageSize": 20,
+    "total": 0,
+    "totalPages": 0
+  },
+  "summary": {
+    "incomeCents": 0,
+    "expenseCents": 0,
+    "balanceCents": 0
+  }
+}
+```
+
+The summary is calculated for the full month, not only the current page.
+
+### AI Recognition
+
+`POST /api/voice/recognize` accepts `multipart/form-data` with a `file` field.
+The file must be `audio/mpeg`, `audio/mp3`, or `audio/wav`. The service calls
+MiMo ASR first and then parses the recognized text into candidate bill items.
+
+`POST /api/voice/parse` accepts JSON for text-only debugging:
+
+```json
+{
+  "text": "早餐 12.5，打车 26"
+}
+```
 
 `POST /api/photo/recognize` accepts `multipart/form-data` with a `file` field.
 The response contains candidate bill items that the client should show for user
@@ -94,7 +141,26 @@ For text-only debugging, the same route also accepts JSON:
 }
 ```
 
-Configure MiMo image recognition with:
+Recognition responses use `amountCents`:
+
+```json
+{
+  "recognizedText": "早餐 12.5",
+  "items": [
+    {
+      "amountCents": 1250,
+      "categoryId": "1",
+      "categoryName": "餐饮",
+      "type": "expense",
+      "remark": "早餐",
+      "billDate": "2026-06-13",
+      "confidence": "high"
+    }
+  ]
+}
+```
+
+Configure MiMo recognition with:
 
 ```env
 MIMO_API_KEY=your_mimo_api_key

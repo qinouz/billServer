@@ -11,11 +11,11 @@ export class ReminderController {
 
   @Get()
   findOne(@CurrentUser() user: CurrentUserPayload) {
-    return this.reminderService.findOne(String(user.userId));
+    return this.reminderService.findOne(user.userId);
   }
 
   @Post()
   save(@CurrentUser() user: CurrentUserPayload, @Body() dto: SaveReminderDto) {
-    return this.reminderService.save(String(user.userId), dto);
+    return this.reminderService.save(user.userId, dto);
   }
 }

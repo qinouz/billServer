@@ -115,7 +115,41 @@ git pull
 docker compose --env-file .env.home -f docker-compose.home.yml up -d --build
 ```
 
-## 7. 备份数据库
+## 7. 数据库结构变更
+
+账单金额已经从小数金额重构为整数分：
+
+- 新字段：`bills.amount_cents`
+- 单位：分，例如 `1234` 表示 `12.34` 元
+- 接口字段：`amountCents`
+
+如果不需要保留历史数据，最简单的方式是重建 MySQL 数据卷，让
+`sql/schema.sql` 按最新结构初始化：
+
+```bash
+docker compose --env-file .env.home -f docker-compose.home.yml down -v
+docker compose --env-file .env.home -f docker-compose.home.yml up -d --build
+```
+
+`down -v` 会删除这个 compose 项目的 MySQL 数据卷。只有确认不需要保留线上数据，
+或者已经完成备份后，才能执行。
+
+如果需要保留历史数据，先备份数据库，再进入 MySQL 手动执行迁移：
+
+```sql
+ALTER TABLE bills ADD COLUMN amount_cents BIGINT NULL COMMENT '金额，单位分' AFTER category_id;
+UPDATE bills SET amount_cents = ROUND(amount * 100) WHERE amount_cents IS NULL;
+ALTER TABLE bills MODIFY amount_cents BIGINT NOT NULL COMMENT '金额，单位分';
+ALTER TABLE bills MODIFY amount DECIMAL(10,2) NULL COMMENT '旧金额字段，已废弃';
+```
+
+执行后再更新容器：
+
+```bash
+docker compose --env-file .env.home -f docker-compose.home.yml up -d --build
+```
+
+## 8. 备份数据库
 
 创建备份：
 
@@ -132,6 +166,6 @@ docker compose --env-file .env.home -f docker-compose.home.yml exec -T mysql sh 
 ## 常用排查
 
 - `api` 一直重启：先看 `docker compose --env-file .env.home -f docker-compose.home.yml logs -f api`。
-- MySQL 首次启动失败：删除空的坏卷后再启动，命令是 `docker volume rm billserver_mysql_home_data`。只有确认没有真实数据时才能这么做。
+- MySQL 首次启动失败：如果确认没有真实数据，可以用 `docker compose --env-file .env.home -f docker-compose.home.yml down -v` 删除这个 compose 项目的数据卷后再启动。
 - 局域网访问不了：检查服务器防火墙是否放行 `8721`，以及 `.env.home` 里的 `API_BIND_HOST` 是否为 `0.0.0.0`。
 - 公网访问不了：检查域名解析、路由器端口转发、HTTPS 证书和反向代理配置。

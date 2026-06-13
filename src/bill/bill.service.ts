@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, IsNull, Repository } from 'typeorm';
 import { BillType, Category } from '../category/entities/category.entity';
-import { MAX_BILL_AMOUNT, MIN_BILL_AMOUNT } from './bill.constants';
+import { toUnixMillis } from '../common/utils/time.util';
+import { MAX_BILL_AMOUNT_CENTS, MIN_BILL_AMOUNT_CENTS } from './bill.constants';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { QueryBillDto } from './dto/query-bill.dto';
 import { UpdateBillDto } from './dto/update-bill.dto';
@@ -40,6 +41,7 @@ export class BillService {
       total,
       pageNo,
       pageSize,
+      ...(month ? { summary: await this.getBillSummary(where) } : {}),
     };
   }
 
@@ -56,12 +58,12 @@ export class BillService {
 
   async create(userId: string, dto: CreateBillDto) {
     await this.ensureCategoryAvailable(userId, dto.categoryId);
-    const amount = this.normalizeAmount(dto.amount);
+    const amountCents = this.normalizeAmountCents(dto.amountCents);
     const bill = await this.billRepository.save(
       this.billRepository.create({
         ...dto,
         userId,
-        amount,
+        amountCents,
       }),
     );
     return { billId: bill.id };
@@ -81,10 +83,10 @@ export class BillService {
 
     const bills = await this.billRepository.save(
       dtos.map((dto) => {
-        const { categoryId, amount, type, remark, billDate } = dto;
+        const { categoryId, amountCents, type, remark, billDate } = dto;
         return this.billRepository.create({
           categoryId,
-          amount: this.normalizeAmount(amount),
+          amountCents: this.normalizeAmountCents(amountCents),
           type,
           remark,
           billDate,
@@ -109,8 +111,10 @@ export class BillService {
     await this.billRepository.save({
       ...bill,
       ...dto,
-      amount:
-        dto.amount === undefined ? bill.amount : this.normalizeAmount(dto.amount),
+      amountCents:
+        dto.amountCents === undefined
+          ? bill.amountCents
+          : this.normalizeAmountCents(dto.amountCents),
     });
     return { billId: id };
   }
@@ -139,29 +143,29 @@ export class BillService {
       },
     });
 
-    const monthly: Record<string, { income: number; expense: number }> = {};
-    let income = 0;
-    let expense = 0;
+    const monthly: Record<string, { incomeCents: number; expenseCents: number }> = {};
+    let incomeCents = 0;
+    let expenseCents = 0;
 
     for (const bill of bills) {
       const month = bill.billDate.substring(5, 7);
-      monthly[month] ??= { income: 0, expense: 0 };
-      const amount = Number(bill.amount);
+      monthly[month] ??= { incomeCents: 0, expenseCents: 0 };
+      const amountCents = Number(bill.amountCents);
 
       if (bill.type === BillType.Income) {
-        monthly[month].income += amount;
-        income += amount;
+        monthly[month].incomeCents += amountCents;
+        incomeCents += amountCents;
       } else {
-        monthly[month].expense += amount;
-        expense += amount;
+        monthly[month].expenseCents += amountCents;
+        expenseCents += amountCents;
       }
     }
 
     return {
       year,
-      income,
-      expense,
-      balance: income - expense,
+      incomeCents,
+      expenseCents,
+      balanceCents: incomeCents - expenseCents,
       monthly,
     };
   }
@@ -178,37 +182,54 @@ export class BillService {
     }
   }
 
-  private normalizeAmount(value: unknown) {
-    const amount = Number(value);
+  private async getBillSummary(where: Record<string, unknown>) {
+    const bills = await this.billRepository.find({ where });
+    let incomeCents = 0;
+    let expenseCents = 0;
+
+    for (const bill of bills) {
+      const amountCents = Number(bill.amountCents);
+      if (bill.type === BillType.Income) {
+        incomeCents += amountCents;
+      } else {
+        expenseCents += amountCents;
+      }
+    }
+
+    return {
+      incomeCents,
+      expenseCents,
+      balanceCents: incomeCents - expenseCents,
+    };
+  }
+
+  private normalizeAmountCents(value: unknown) {
+    const amountCents = Number(value);
     if (
-      !Number.isFinite(amount) ||
-      amount < MIN_BILL_AMOUNT ||
-      amount > MAX_BILL_AMOUNT
+      !Number.isInteger(amountCents) ||
+      amountCents < MIN_BILL_AMOUNT_CENTS ||
+      amountCents > MAX_BILL_AMOUNT_CENTS
     ) {
       throw new BadRequestException(
-        `金额必须在 ${MIN_BILL_AMOUNT} 到 ${MAX_BILL_AMOUNT} 之间`,
+        `金额必须在 ${MIN_BILL_AMOUNT_CENTS} 到 ${MAX_BILL_AMOUNT_CENTS} 分之间`,
       );
     }
 
-    if (!Number.isInteger(amount * 100)) {
-      throw new BadRequestException('金额最多只能保留两位小数');
-    }
-
-    return amount.toFixed(2);
+    return String(amountCents);
   }
 
   private toListItem(bill: Bill) {
     return {
       id: bill.id,
       categoryId: bill.categoryId,
-      amount: Number(bill.amount),
+      amountCents: Number(bill.amountCents),
       type: bill.type,
       remark: bill.remark,
       billDate: bill.billDate,
       categoryName: bill.category?.name,
       categoryIcon: bill.category?.icon,
-      createdAt: bill.createdAt,
-      updatedAt: bill.updatedAt,
+      createdAt: toUnixMillis(bill.createdAt),
+      updatedAt: toUnixMillis(bill.updatedAt),
     };
   }
 }

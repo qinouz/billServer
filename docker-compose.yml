@@ -19,6 +19,7 @@ services:
       MIMO_API_KEY: ${MIMO_API_KEY}
       MIMO_API_URL: ${MIMO_API_URL:-https://token-plan-cn.xiaomimimo.com/v1/chat/completions}
       MIMO_MODEL: ${MIMO_MODEL:-mimo-v2.5}
+      MIMO_TIMEOUT_MS: ${MIMO_TIMEOUT_MS:-60000}
     depends_on:
       - mysql
 

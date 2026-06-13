@@ -24,8 +24,8 @@ export class Bill {
   @Column({ name: 'category_id', type: 'bigint' })
   categoryId: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amount: string;
+  @Column({ name: 'amount_cents', type: 'bigint' })
+  amountCents: string;
 
   @Column({ type: 'enum', enum: BillType })
   type: BillType;

@@ -23,22 +23,22 @@ export class BillController {
 
   @Get()
   findAll(@CurrentUser() user: CurrentUserPayload, @Query() query: QueryBillDto) {
-    return this.billService.findAll(String(user.userId), query);
+    return this.billService.findAll(user.userId, query);
   }
 
   @Get('statistic')
   statistic(@CurrentUser() user: CurrentUserPayload, @Query('year') year: string) {
-    return this.billService.getStatistic(String(user.userId), Number(year));
+    return this.billService.getStatistic(user.userId, Number(year));
   }
 
   @Get(':id')
   findOne(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
-    return this.billService.findOne(String(user.userId), id);
+    return this.billService.findOne(user.userId, id);
   }
 
   @Post()
   create(@CurrentUser() user: CurrentUserPayload, @Body() dto: CreateBillDto) {
-    return this.billService.create(String(user.userId), dto);
+    return this.billService.create(user.userId, dto);
   }
 
   @Post('batch')
@@ -47,7 +47,7 @@ export class BillController {
     @Body() body: CreateBillDto[] | { items?: Array<CreateBillDto & { categoryName?: string }> },
   ) {
     const dtos = Array.isArray(body) ? body : body.items;
-    return this.billService.createBatch(String(user.userId), dtos);
+    return this.billService.createBatch(user.userId, dtos);
   }
 
   @Put(':id')
@@ -56,11 +56,11 @@ export class BillController {
     @Param('id') id: string,
     @Body() dto: UpdateBillDto,
   ) {
-    return this.billService.update(String(user.userId), id, dto);
+    return this.billService.update(user.userId, id, dto);
   }
 
   @Delete(':id')
   remove(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
-    return this.billService.remove(String(user.userId), id);
+    return this.billService.remove(user.userId, id);
   }
 }

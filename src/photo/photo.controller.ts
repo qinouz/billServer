@@ -29,7 +29,7 @@ export class PhotoController {
     @Res() response: Response,
   ) {
     return this.photoService
-      .recognize(String(user.userId), file, body)
+      .recognize(user.userId, file, body)
       .then((data) => {
         response
           .type('application/json; charset=utf-8')
