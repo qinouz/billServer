@@ -10,11 +10,11 @@ export class UserController {
 
   @Get('profile')
   profile(@CurrentUser() user: CurrentUserPayload) {
-    return this.userService.findById(String(user.userId));
+    return this.userService.findById(user.userId);
   }
 
   @Get('stats')
   stats(@CurrentUser() user: CurrentUserPayload) {
-    return this.userService.getStats(String(user.userId));
+    return this.userService.getStats(user.userId);
   }
 }

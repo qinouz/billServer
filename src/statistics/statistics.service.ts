@@ -105,7 +105,7 @@ export class StatisticsService {
     let expenseCount = 0;
 
     for (const bill of bills) {
-      const amountCents = this.amountToCents(bill.amount);
+      const amountCents = this.amountToCents(bill.amountCents);
       if (bill.type === BillType.Income) {
         incomeCents += amountCents;
         incomeCount += 1;
@@ -147,7 +147,7 @@ export class StatisticsService {
       if (!current) {
         continue;
       }
-      current.amountCents += this.amountToCents(bill.amount);
+      current.amountCents += this.amountToCents(bill.amountCents);
       current.count += 1;
     }
 
@@ -183,7 +183,7 @@ export class StatisticsService {
         count: 0,
       };
 
-      current.amountCents += this.amountToCents(bill.amount);
+      current.amountCents += this.amountToCents(bill.amountCents);
       current.count += 1;
       aggregation.set(key, current);
     }
@@ -230,7 +230,7 @@ export class StatisticsService {
     return {
       id: bill.id,
       type: bill.type,
-      amountCents: this.toResponseAmountCents(this.amountToCents(bill.amount)),
+      amountCents: this.toResponseAmountCents(this.amountToCents(bill.amountCents)),
       categoryId: bill.category?.id ?? OTHER_CATEGORY_ID,
       categoryName,
       categoryIcon: bill.category?.icon ?? '',
@@ -283,7 +283,7 @@ export class StatisticsService {
   }
 
   private amountToCents(value: string | number) {
-    // 现有接口金额单位是“分”，数据库 DECIMAL 只作为兼容存储格式。
+    // 现有接口金额单位是“分”，数据库字段 amount_cents 也是分。
     const amount = Number(value);
     if (!Number.isFinite(amount)) {
       return 0;

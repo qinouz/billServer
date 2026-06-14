@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, IsNull, Repository } from 'typeorm';
 import { Bill } from '../bill/entities/bill.entity';
+import { toUnixMillis } from '../common/utils/time.util';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { BillType, Category } from './entities/category.entity';
@@ -53,10 +54,11 @@ export class CategoryService {
       { userId: IsNull(), isSystem: true, ...(type ? { type } : {}) },
     ];
 
-    return this.categoryRepository.find({
+    const categories = await this.categoryRepository.find({
       where: base,
       order: { type: 'ASC', sortOrder: 'ASC', createdAt: 'ASC' },
     });
+    return categories.map((category) => this.toResponse(category));
   }
 
   async create(userId: string, dto: CreateCategoryDto) {
@@ -147,5 +149,18 @@ export class CategoryService {
       throw new NotFoundException('分类不存在');
     }
     return category;
+  }
+
+  private toResponse(category: Category) {
+    return {
+      id: category.id,
+      userId: category.userId ?? null,
+      name: category.name,
+      icon: category.icon,
+      type: category.type,
+      sortOrder: category.sortOrder,
+      isSystem: category.isSystem,
+      createdAt: toUnixMillis(category.createdAt),
+    };
   }
 }

@@ -2,7 +2,11 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, IsNull, Repository } from 'typeorm';
 import { BillType, Category } from '../category/entities/category.entity';
-import { MAX_BILL_AMOUNT, MIN_BILL_AMOUNT } from './bill.constants';
+import { toUnixMillis } from '../common/utils/time.util';
+import {
+  MAX_BILL_AMOUNT_CENTS,
+  MIN_BILL_AMOUNT_CENTS,
+} from './bill.constants';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { QueryBillDto } from './dto/query-bill.dto';
 import { UpdateBillDto } from './dto/update-bill.dto';
@@ -24,7 +28,10 @@ export class BillService {
     if (month) {
       const [year, mon] = month.split('-').map(Number);
       const lastDay = new Date(year, mon, 0).getDate();
-      where.billDate = Between(`${month}-01`, `${month}-${String(lastDay).padStart(2, '0')}`);
+      where.billDate = Between(
+        `${month}-01`,
+        `${month}-${String(lastDay).padStart(2, '0')}`,
+      );
     }
     if (type) {
       where.type = type;
@@ -46,6 +53,7 @@ export class BillService {
       total,
       pageNo,
       pageSize,
+      ...(month ? { summary: await this.getBillSummary(where) } : {}),
     };
   }
 
@@ -62,13 +70,14 @@ export class BillService {
 
   async create(userId: string, dto: CreateBillDto) {
     await this.ensureCategoryAvailable(userId, dto.categoryId);
-    const amount = this.normalizeAmount(dto);
-    const { amountCents: _amountCents, ...billFields } = dto;
     const bill = await this.billRepository.save(
       this.billRepository.create({
-        ...billFields,
+        categoryId: dto.categoryId,
+        amountCents: this.normalizeAmountCents(dto.amountCents),
+        type: dto.type,
+        remark: dto.remark,
+        billDate: dto.billDate,
         userId,
-        amount,
       }),
     );
     return { billId: bill.id };
@@ -87,17 +96,16 @@ export class BillService {
     }
 
     const bills = await this.billRepository.save(
-      dtos.map((dto) => {
-        const { categoryId, type, remark, billDate } = dto;
-        return this.billRepository.create({
-          categoryId,
-          amount: this.normalizeAmount(dto),
-          type,
-          remark,
-          billDate,
+      dtos.map((dto) =>
+        this.billRepository.create({
+          categoryId: dto.categoryId,
+          amountCents: this.normalizeAmountCents(dto.amountCents),
+          type: dto.type,
+          remark: dto.remark,
+          billDate: dto.billDate,
           userId,
-        });
-      }),
+        }),
+      ),
     );
     return { billIds: bills.map((bill) => bill.id), count: bills.length };
   }
@@ -112,12 +120,14 @@ export class BillService {
     if (dto.categoryId) {
       await this.ensureCategoryAvailable(userId, dto.categoryId);
     }
-    const { amountCents: _amountCents, ...changes } = dto;
 
     await this.billRepository.save({
       ...bill,
-      ...changes,
-      amount: dto.amountCents === undefined ? bill.amount : this.normalizeAmount(dto),
+      ...dto,
+      amountCents:
+        dto.amountCents === undefined
+          ? bill.amountCents
+          : this.normalizeAmountCents(dto.amountCents),
     });
     return { billId: id };
   }
@@ -156,7 +166,7 @@ export class BillService {
     for (const bill of bills) {
       const month = bill.billDate.substring(5, 7);
       monthly[month] ??= { incomeAmountCents: 0, expenseAmountCents: 0 };
-      const amountCents = Number(bill.amount);
+      const amountCents = Number(bill.amountCents);
 
       if (bill.type === BillType.Income) {
         monthly[month].incomeAmountCents += amountCents;
@@ -188,23 +198,40 @@ export class BillService {
     }
   }
 
-  private normalizeAmount(dto: { amountCents?: number }) {
-    const amountCents = Number(dto.amountCents);
+  private async getBillSummary(where: Record<string, unknown>) {
+    const bills = await this.billRepository.find({ where });
+    let incomeAmountCents = 0;
+    let expenseAmountCents = 0;
+
+    for (const bill of bills) {
+      const amountCents = Number(bill.amountCents);
+      if (bill.type === BillType.Income) {
+        incomeAmountCents += amountCents;
+      } else {
+        expenseAmountCents += amountCents;
+      }
+    }
+
+    return {
+      incomeAmountCents,
+      expenseAmountCents,
+      balanceAmountCents: incomeAmountCents - expenseAmountCents,
+    };
+  }
+
+  private normalizeAmountCents(value: unknown) {
+    const amountCents = Number(value);
     if (
-      !Number.isFinite(amountCents) ||
-      amountCents < MIN_BILL_AMOUNT ||
-      amountCents > MAX_BILL_AMOUNT
+      !Number.isInteger(amountCents) ||
+      amountCents < MIN_BILL_AMOUNT_CENTS ||
+      amountCents > MAX_BILL_AMOUNT_CENTS
     ) {
       throw new BadRequestException(
-        `amountCents 必须在 ${MIN_BILL_AMOUNT} 到 ${MAX_BILL_AMOUNT} 分之间`,
+        `amountCents 必须在 ${MIN_BILL_AMOUNT_CENTS} 到 ${MAX_BILL_AMOUNT_CENTS} 分之间`,
       );
     }
 
-    if (!Number.isInteger(amountCents)) {
-      throw new BadRequestException('amountCents 单位为分，必须传入整数');
-    }
-
-    return amountCents.toFixed(2);
+    return String(amountCents);
   }
 
   private toListItem(bill: Bill) {
@@ -212,14 +239,14 @@ export class BillService {
       id: bill.id,
       categoryId: bill.categoryId,
       // 对外统一使用 amountCents，单位为“分”。
-      amountCents: Number(bill.amount),
+      amountCents: Number(bill.amountCents),
       type: bill.type,
       remark: bill.remark,
       billDate: bill.billDate,
       categoryName: bill.category?.name,
       categoryIcon: bill.category?.icon,
-      createdAt: bill.createdAt,
-      updatedAt: bill.updatedAt,
+      createdAt: toUnixMillis(bill.createdAt),
+      updatedAt: toUnixMillis(bill.updatedAt),
     };
   }
 }

@@ -46,7 +46,7 @@ function classify(rows) {
   if ('categoryId' in first && 'billDate' in first) {
     return 'bills';
   }
-  if ('reminderTime' in first || 'reminder_time' in first) {
+  if ('reminderTime' in first || 'reminder_time' in first || 'time' in first) {
     return 'reminders';
   }
   if ('name' in first && 'icon' in first && 'type' in first) {
@@ -230,7 +230,13 @@ async function importBills(connection, bills) {
     }
 
     const amount = Number(bill.amount);
-    if (!Number.isFinite(amount) || amount <= 0 || amount > 99999999.99) {
+    const amountCents = Math.round(amount * 100);
+    if (
+      !Number.isFinite(amount) ||
+      !Number.isInteger(amountCents) ||
+      amountCents <= 0 ||
+      amountCents > 9999999999
+    ) {
       if (bill.isDeleted) {
         skippedInvalidDeleted += 1;
         continue;
@@ -249,12 +255,12 @@ async function importBills(connection, bills) {
 
     const [result] = await connection.query(
       `INSERT INTO bills
-       (user_id, category_id, amount, type, remark, bill_date, created_at, updated_at, is_deleted)
+       (user_id, category_id, amount_cents, type, remark, bill_date, created_at, updated_at, is_deleted)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         categoryId,
-        amount.toFixed(2),
+        amountCents,
         bill.type,
         bill.remark || '',
         bill.billDate,
@@ -269,6 +275,61 @@ async function importBills(connection, bills) {
   }
 
   return { created, reused, skippedInvalidDeleted };
+}
+
+async function importReminders(connection, reminders) {
+  let upserted = 0;
+  let skipped = 0;
+
+  for (const reminder of reminders) {
+    const userId = reminder.userId
+      ? await getMappedId(connection, 'users', reminder.userId)
+      : null;
+    if (!userId) {
+      skipped += 1;
+      continue;
+    }
+
+    const reminderTime = normalizeReminderTime(
+      reminder.reminderTime || reminder.reminder_time || reminder.time,
+    );
+    if (!reminderTime) {
+      skipped += 1;
+      continue;
+    }
+
+    await connection.query(
+      `INSERT INTO reminders (user_id, reminder_time, is_enabled, created_at)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         reminder_time = VALUES(reminder_time),
+         is_enabled = VALUES(is_enabled)`,
+      [
+        userId,
+        reminderTime,
+        reminder.isEnabled ?? reminder.is_enabled ?? reminder.enabled ?? true,
+        mysqlDate(reminder.createTime) || mysqlDate(new Date()),
+      ],
+    );
+    upserted += 1;
+  }
+
+  return { upserted, skipped };
+}
+
+function normalizeReminderTime(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(trimmed)) {
+    return `${trimmed}:00`;
+  }
+  if (/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
 }
 
 async function main() {
@@ -296,10 +357,11 @@ async function main() {
     const users = await importUsers(connection, exports.users);
     const categories = await importCategories(connection, exports.categories);
     const bills = await importBills(connection, exports.bills);
+    const reminders = await importReminders(connection, exports.reminders);
 
     await connection.commit();
     console.log('import complete');
-    console.table({ users, categories, bills });
+    console.table({ users, categories, bills, reminders });
   } catch (error) {
     await connection.rollback();
     throw error;

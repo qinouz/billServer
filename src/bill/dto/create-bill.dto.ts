@@ -10,7 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { BillType } from '../../category/entities/category.entity';
-import { MAX_BILL_AMOUNT, MIN_BILL_AMOUNT } from '../bill.constants';
+import { MAX_BILL_AMOUNT_CENTS, MIN_BILL_AMOUNT_CENTS } from '../bill.constants';
 
 export class CreateBillDto {
   @IsString()
@@ -19,8 +19,8 @@ export class CreateBillDto {
   // 金额单位固定为“分”，对外字段统一使用 amountCents，避免误解为“元”。
   @Type(() => Number)
   @IsInt()
-  @Min(MIN_BILL_AMOUNT)
-  @Max(MAX_BILL_AMOUNT)
+  @Min(MIN_BILL_AMOUNT_CENTS)
+  @Max(MAX_BILL_AMOUNT_CENTS)
   amountCents: number;
 
   @IsEnum(BillType)

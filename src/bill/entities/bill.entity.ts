@@ -24,9 +24,9 @@ export class Bill {
   @Column({ name: 'category_id', type: 'bigint' })
   categoryId: string;
 
-  // 金额业务单位为“分”；字段保留 DECIMAL(10,2) 以兼容既有数据库结构。
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amount: string;
+  // 金额单位为“分”，对外接口也统一使用 amountCents。
+  @Column({ name: 'amount_cents', type: 'bigint' })
+  amountCents: string;
 
   @Column({ type: 'enum', enum: BillType })
   type: BillType;

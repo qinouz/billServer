@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Bill } from '../bill/entities/bill.entity';
+import { toUnixMillis } from '../common/utils/time.util';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 
@@ -19,6 +20,11 @@ export class UserService {
   }
 
   async findById(id: string) {
+    const user = await this.findEntityById(id);
+    return this.toProfile(user);
+  }
+
+  async findEntityById(id: string) {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -45,7 +51,7 @@ export class UserService {
 
     if (dates.length > 0) {
       const today = this.startOfLocalDay(new Date());
-      const latestRecordDate = this.startOfLocalDay(new Date(dates[0]));
+      const latestRecordDate = this.parseLocalDate(dates[0]);
       const diffToday = Math.floor(
         (today.getTime() - latestRecordDate.getTime()) / (1000 * 60 * 60 * 24),
       );
@@ -78,5 +84,20 @@ export class UserService {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private parseLocalDate(value: string) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  private toProfile(user: User) {
+    return {
+      userId: user.id,
+      nickname: user.nickname,
+      avatarUrl: user.avatarUrl,
+      createdAt: toUnixMillis(user.createdAt),
+      updatedAt: toUnixMillis(user.updatedAt),
+    };
   }
 }

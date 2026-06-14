@@ -25,14 +25,15 @@ CREATE TABLE IF NOT EXISTS categories (
   sort_order INT DEFAULT 0 COMMENT '排序',
   is_system BOOLEAN DEFAULT FALSE COMMENT '是否系统分类',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_type (user_id, type)
+  INDEX idx_user_type (user_id, type),
+  CONSTRAINT fk_categories_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
 CREATE TABLE IF NOT EXISTS bills (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL COMMENT '用户ID',
   category_id BIGINT NOT NULL COMMENT '分类ID',
-  amount DECIMAL(10,2) NOT NULL COMMENT '金额',
+  amount_cents BIGINT NOT NULL COMMENT '金额，单位分',
   type ENUM('income', 'expense') NOT NULL COMMENT '类型',
   remark VARCHAR(200) DEFAULT '' COMMENT '备注',
   bill_date DATE NOT NULL COMMENT '账单日期',
@@ -40,7 +41,9 @@ CREATE TABLE IF NOT EXISTS bills (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   is_deleted BOOLEAN DEFAULT FALSE COMMENT '软删除',
   INDEX idx_user_date (user_id, bill_date),
-  INDEX idx_user_deleted (user_id, is_deleted)
+  INDEX idx_user_deleted (user_id, is_deleted),
+  CONSTRAINT fk_bills_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_bills_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='账单表';
 
 CREATE TABLE IF NOT EXISTS reminders (
@@ -49,7 +52,8 @@ CREATE TABLE IF NOT EXISTS reminders (
   reminder_time TIME NOT NULL COMMENT '提醒时间',
   is_enabled BOOLEAN DEFAULT TRUE COMMENT '是否启用',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_user (user_id)
+  UNIQUE KEY uk_user (user_id),
+  CONSTRAINT fk_reminders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提醒表';
 
 ALTER TABLE users
@@ -71,7 +75,7 @@ ALTER TABLE categories
 ALTER TABLE bills
   MODIFY user_id BIGINT NOT NULL COMMENT '用户ID',
   MODIFY category_id BIGINT NOT NULL COMMENT '分类ID',
-  MODIFY amount DECIMAL(10,2) NOT NULL COMMENT '金额',
+  MODIFY amount_cents BIGINT NOT NULL COMMENT '金额，单位分',
   MODIFY type ENUM('income', 'expense') NOT NULL COMMENT '类型',
   MODIFY remark VARCHAR(200) DEFAULT '' COMMENT '备注',
   MODIFY bill_date DATE NOT NULL COMMENT '账单日期',

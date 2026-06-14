@@ -16,7 +16,7 @@ interface ParsedPhotoItem {
 }
 
 export interface RecognizedBillItem {
-  amount: number | null;
+  amountCents: number | null;
   categoryId: string | null;
   categoryName: string | null;
   type: BillType;
@@ -175,10 +175,15 @@ export class PhotoService {
     return parsedItems.map((item) => {
       const type = item.type === BillType.Income ? BillType.Income : BillType.Expense;
       const category = this.findCategory(categories, item.category, type);
-      const amount = item.amount === null || item.amount === undefined ? null : Number(item.amount);
+      const amountYuan =
+        item.amount === null || item.amount === undefined ? null : Number(item.amount);
+      const amountCents =
+        amountYuan !== null && Number.isFinite(amountYuan)
+          ? Math.round(amountYuan * 100)
+          : null;
 
       return {
-        amount: Number.isFinite(amount) ? amount : null,
+        amountCents,
         categoryId: category?.id ?? null,
         categoryName: category?.name ?? item.category ?? null,
         type,
@@ -186,7 +191,7 @@ export class PhotoService {
         billDate: item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date)
           ? item.date
           : this.formatLocalDate(new Date()),
-        confidence: this.calculateConfidence(amount, category?.id),
+        confidence: this.calculateConfidence(amountCents, category?.id),
       };
     });
   }
@@ -241,9 +246,9 @@ export class PhotoService {
     return rules.find(([pattern]) => pattern.test(text))?.[1] ?? '购物';
   }
 
-  private calculateConfidence(amount: number | null, categoryId?: string | null) {
-    if (amount && categoryId) return 'high';
-    if (amount || categoryId) return 'medium';
+  private calculateConfidence(amountCents: number | null, categoryId?: string | null) {
+    if (amountCents && categoryId) return 'high';
+    if (amountCents || categoryId) return 'medium';
     return 'low';
   }
 

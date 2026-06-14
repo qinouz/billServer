@@ -78,7 +78,7 @@ export class AuthService {
         token,
         { ignoreExpiration: true },
       );
-      const user = await this.userService.findById(payload.sub);
+      const user = await this.userService.findEntityById(payload.sub);
       if (!user) {
         throw new UnauthorizedException('用户不存在');
       }
