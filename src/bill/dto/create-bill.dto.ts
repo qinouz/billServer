@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Max,
@@ -16,11 +16,12 @@ export class CreateBillDto {
   @IsString()
   categoryId: string;
 
+  // 金额单位固定为“分”，对外字段统一使用 amountCents，避免误解为“元”。
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsInt()
   @Min(MIN_BILL_AMOUNT)
   @Max(MAX_BILL_AMOUNT)
-  amount: number;
+  amountCents: number;
 
   @IsEnum(BillType)
   type: BillType;

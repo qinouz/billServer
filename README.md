@@ -63,12 +63,14 @@ The default local port is `8721`. All routes are prefixed with `/api`.
 - `GET /api/users/profile`
 - `GET /api/users/stats`
 - `GET /api/bills`
+- `GET /api/bills?month=2026-06&type=expense&categoryId=1&pageNo=1&pageSize=20`
 - `GET /api/bills/:id`
 - `POST /api/bills`
 - `POST /api/bills/batch`
 - `PUT /api/bills/:id`
 - `DELETE /api/bills/:id`
 - `GET /api/bills/statistic?year=2026`
+- `GET /api/statistics/monthly?year=2026&month=6&type=expense`
 - `GET /api/categories`
 - `POST /api/categories`
 - `PUT /api/categories/:id`

@@ -1,5 +1,14 @@
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
+import { BillType } from '../../category/entities/category.entity';
 
 export class QueryBillDto {
   @IsOptional()
@@ -17,6 +26,14 @@ export class QueryBillDto {
   })
   @Matches(/^\d{4}-\d{2}$/)
   month?: string;
+
+  @IsOptional()
+  @IsEnum(BillType)
+  type?: BillType;
+
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
 
   @IsOptional()
   @Type(() => Number)

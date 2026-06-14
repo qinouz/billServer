@@ -8,6 +8,7 @@ import { CategoryModule } from './category/category.module';
 import { PhotoModule } from './photo/photo.module';
 import { HealthModule } from './health/health.module';
 import { ReminderModule } from './reminder/reminder.module';
+import { StatisticsModule } from './statistics/statistics.module';
 import { UserModule } from './user/user.module';
 import { VoiceModule } from './voice/voice.module';
 
@@ -44,6 +45,7 @@ const envFilePath = [
     UserModule,
     BillModule,
     CategoryModule,
+    StatisticsModule,
     VoiceModule,
     PhotoModule,
     ReminderModule,

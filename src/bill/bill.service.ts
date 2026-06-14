@@ -18,13 +18,19 @@ export class BillService {
   ) {}
 
   async findAll(userId: string, query: QueryBillDto) {
-    const { month, pageNo = 1, pageSize = 20 } = query;
+    const { categoryId, month, pageNo = 1, pageSize = 20, type } = query;
     const where: Record<string, unknown> = { userId, isDeleted: false };
 
     if (month) {
       const [year, mon] = month.split('-').map(Number);
       const lastDay = new Date(year, mon, 0).getDate();
       where.billDate = Between(`${month}-01`, `${month}-${String(lastDay).padStart(2, '0')}`);
+    }
+    if (type) {
+      where.type = type;
+    }
+    if (categoryId) {
+      where.categoryId = categoryId;
     }
 
     const [bills, total] = await this.billRepository.findAndCount({
@@ -56,10 +62,11 @@ export class BillService {
 
   async create(userId: string, dto: CreateBillDto) {
     await this.ensureCategoryAvailable(userId, dto.categoryId);
-    const amount = this.normalizeAmount(dto.amount);
+    const amount = this.normalizeAmount(dto);
+    const { amountCents: _amountCents, ...billFields } = dto;
     const bill = await this.billRepository.save(
       this.billRepository.create({
-        ...dto,
+        ...billFields,
         userId,
         amount,
       }),
@@ -81,10 +88,10 @@ export class BillService {
 
     const bills = await this.billRepository.save(
       dtos.map((dto) => {
-        const { categoryId, amount, type, remark, billDate } = dto;
+        const { categoryId, type, remark, billDate } = dto;
         return this.billRepository.create({
           categoryId,
-          amount: this.normalizeAmount(amount),
+          amount: this.normalizeAmount(dto),
           type,
           remark,
           billDate,
@@ -105,12 +112,12 @@ export class BillService {
     if (dto.categoryId) {
       await this.ensureCategoryAvailable(userId, dto.categoryId);
     }
+    const { amountCents: _amountCents, ...changes } = dto;
 
     await this.billRepository.save({
       ...bill,
-      ...dto,
-      amount:
-        dto.amount === undefined ? bill.amount : this.normalizeAmount(dto.amount),
+      ...changes,
+      amount: dto.amountCents === undefined ? bill.amount : this.normalizeAmount(dto),
     });
     return { billId: id };
   }
@@ -139,29 +146,32 @@ export class BillService {
       },
     });
 
-    const monthly: Record<string, { income: number; expense: number }> = {};
-    let income = 0;
-    let expense = 0;
+    const monthly: Record<
+      string,
+      { incomeAmountCents: number; expenseAmountCents: number }
+    > = {};
+    let incomeAmountCents = 0;
+    let expenseAmountCents = 0;
 
     for (const bill of bills) {
       const month = bill.billDate.substring(5, 7);
-      monthly[month] ??= { income: 0, expense: 0 };
-      const amount = Number(bill.amount);
+      monthly[month] ??= { incomeAmountCents: 0, expenseAmountCents: 0 };
+      const amountCents = Number(bill.amount);
 
       if (bill.type === BillType.Income) {
-        monthly[month].income += amount;
-        income += amount;
+        monthly[month].incomeAmountCents += amountCents;
+        incomeAmountCents += amountCents;
       } else {
-        monthly[month].expense += amount;
-        expense += amount;
+        monthly[month].expenseAmountCents += amountCents;
+        expenseAmountCents += amountCents;
       }
     }
 
     return {
       year,
-      income,
-      expense,
-      balance: income - expense,
+      incomeAmountCents,
+      expenseAmountCents,
+      balanceAmountCents: incomeAmountCents - expenseAmountCents,
       monthly,
     };
   }
@@ -178,30 +188,31 @@ export class BillService {
     }
   }
 
-  private normalizeAmount(value: unknown) {
-    const amount = Number(value);
+  private normalizeAmount(dto: { amountCents?: number }) {
+    const amountCents = Number(dto.amountCents);
     if (
-      !Number.isFinite(amount) ||
-      amount < MIN_BILL_AMOUNT ||
-      amount > MAX_BILL_AMOUNT
+      !Number.isFinite(amountCents) ||
+      amountCents < MIN_BILL_AMOUNT ||
+      amountCents > MAX_BILL_AMOUNT
     ) {
       throw new BadRequestException(
-        `金额必须在 ${MIN_BILL_AMOUNT} 到 ${MAX_BILL_AMOUNT} 之间`,
+        `amountCents 必须在 ${MIN_BILL_AMOUNT} 到 ${MAX_BILL_AMOUNT} 分之间`,
       );
     }
 
-    if (!Number.isInteger(amount * 100)) {
-      throw new BadRequestException('金额最多只能保留两位小数');
+    if (!Number.isInteger(amountCents)) {
+      throw new BadRequestException('amountCents 单位为分，必须传入整数');
     }
 
-    return amount.toFixed(2);
+    return amountCents.toFixed(2);
   }
 
   private toListItem(bill: Bill) {
     return {
       id: bill.id,
       categoryId: bill.categoryId,
-      amount: Number(bill.amount),
+      // 对外统一使用 amountCents，单位为“分”。
+      amountCents: Number(bill.amount),
       type: bill.type,
       remark: bill.remark,
       billDate: bill.billDate,
